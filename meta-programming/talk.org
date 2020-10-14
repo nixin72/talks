@@ -1,0 +1,130 @@
+#+TITLE: Meta Programming and Macros
+#+Author: Philip Dumaresq
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="/s/repos/dotfiles/.emacs.d/src/languages/my-org-css.css" />
+
+* What is meta programming?
+- The ability to treat our code as data
+- Using information about our source code in our program
+- Ex. In C# we can use reflection to get a list of all properties of an object
+
+* What are macros?
+- Macros are the ability to transform our code at compile time
+- Macros are a form of meta programming
+  - They analyze the code provided to them as data
+  - Then they return new code to be compiled
+- In Lisp, we can create macros as simply as writing a function
+
+* Why write macros?
+- In what scenario would we really need to transform our syntax?
+- Sounds like complex theory crap that we shouldn't worry about
+- In practice, it's just another abstraction tool.
+  - Just like objects in OOP or higher-order functions in FP.
+
+* A simple do-while loop
+
+#+BEGIN_SRC common-lisp
+(defun a-function (cond)
+  (do-something)
+  (loop while cond do
+    (do-something)))
+#+END_SRC
+
+Here, we have a pattern that's very common - something that would be solved by having a ~do-while~
+loop. However, Common Lisp doesn't have a ~do-while~ loop. 
+
+So, we'll create one ourselves:
+
+#+BEGIN_SRC common-lisp
+(defmacro do-while (cond &rest body)
+  `(progn
+     (progn . ,body)
+     (loop while ,cond do
+       (progn . ,body))))
+#+END_SRC
+
+Now, whenever we call ~do-while~, it'll expand into a regular while loop with the first thing we want 
+to do before the loop. 
+
+We can use the ~macroexpand~ function to see what our macros will output:
+
+#+BEGIN_SRC common-lisp :results macroexpand
+> (macroexpand 
+    '(do-while cond
+       (do-something)))
+;; Outputs
+(progn
+  (progn (do-something)
+  (while cond
+    (progn
+      (do-something)))))
+#+END_SRC
+
+* What's wrong with functions?
+Nothing. They just serve adifferent purpose. Let's try implementing our ~do-while~ loop using a 
+function, and we'll see how different this is now:
+
+#+BEGIN_SRC common-lisp
+(defun do-while (cond body)
+  (funcall body)
+  (loop while (funcall cond) do
+    (funcall body)))
+#+END_SRC
+
+This looks like it'll work fine, but what about when we want to try actually using this?
+
+#+BEGIN_SRC common-lisp
+(do-while (lambda () cond)
+  (lambda () (do-something)))
+#+END_SRC
+
+Now everything is just wrapped in ~lambda~, which, while it works, is pretty ugly and much more 
+verbose than before.
+
+So we can use macros as just another abstraction tool to simplify and clean up our code in the same
+way that we could do by writing functions or creating new classes.
+
+* SQL in Lisp
+
+So now that I'm sure you're all convinced macros are a good tool, we're going to use them to create
+an small DSL for writing SQL queries. In most languages, you need to write SQL queries as a string
+or as a JSON object or chain some function calls together or something. We're going to try to
+replicate SQL syntax in Lisp. 
+
+** Defining our goal
+The first thing that we're going to do is look at what the normal SQL looks like to try and define
+our goal for what we want our Lisp macro to look like when being called.
+
+Let's look at a simple SQL query:
+
+#+BEGIN_SRC sql
+SELECT * 
+FROM tablename as tn
+WHERE tn.a = 20
+  AND tn.b is not null;
+#+END_SRC
+
+Our goal is for our Lisp code to look as similar to this as possible. We're only going to worry
+about defining the ~SELECT~, ~FROM~, and ~WHERE~ keywords in SQL, and we won't worry about manipulating
+tables, creating databases, or anything like that. So what should using our macro look like?
+
+#+BEGIN_SRC common-lisp
+(sql :select *
+     :from (:tablename tn)
+     :where (and (= tn.a 20)
+                 (not (null tn.b))))
+#+END_SRC
+
+For now, I think this is a pretty close approximation. There's a couple issues with it, but I'm
+going to ignore them because I can :upside_down: 
+
+** Defining our output target
+Once we know what our macro should look like being called, then we're going to consider what our
+output code should look like. Macros produce code, so we want to write some code that will do the
+heavy lifting of turning the data into our SQL as strings. Our macros won't output the strings, our
+macros will be an interface that we use to call our ugly functions more cleanly. So the functions
+we'll want are the following:
+
+#+begin_src common-lisp
+(defun create-select ())
+#+end_src
+
