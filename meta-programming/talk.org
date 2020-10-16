@@ -83,6 +83,48 @@ verbose than before.
 So we can use macros as just another abstraction tool to simplify and clean up our code in the same
 way that we could do by writing functions or creating new classes.
 
+*** Threading macros
+If you're still not convinced, here's a macro that would allow us to pipe our data between function
+calls so that we don't need to have deep nested calls:
+
+#+begin_src lisp
+(defmacro -> (exp &rest funcalls)
+  (reduce (lambda (a x)
+            (let* ((found nil)
+                   (insert (loop for el in x collect
+                             (cond
+                               ((eq el '_)
+                                (setf found t)
+                                a)
+                               (t el)))))
+              (if found
+                  insert
+                  (cons (car x) (cons a (cdr x))))))
+          funcalls
+          :initial-value exp))
+#+end_src
+
+Now if we wanted to run a list through a sequence of operations, instead of nesting them like 
+
+#+begin_src common-lisp
+(reduce #'reducer 
+        (remove-if #'pred 
+                   (mapcar #'mapper list)))
+#+end_src
+
+We can do 
+
+#+begin_src emacs-lisp
+(-> list 
+    (mapcar #'mapper _)
+    (remove-if #'pred _)
+    (reduce #'reducer _))
+#+end_src
+
+Which is much clearer about what we're doing here than simply having a bunch of nested function
+calls. We could also easily construct the ~->>~ variation of the threading macro that defaults to
+inserting the argument as the last parameter so that we can omit the underscores.
+
 * SQL in Lisp
 
 So now that I'm sure you're all convinced macros are a good tool, we're going to use them to create
@@ -105,7 +147,7 @@ WHERE tn.a = 20
 
 Our goal is for our Lisp code to look as similar to this as possible. We're only going to worry
 about defining the ~SELECT~, ~FROM~, and ~WHERE~ keywords in SQL, and we won't worry about manipulating
-tables, creating databases, or anything like that. So what should using our macro look like?
+tables, creating new databases, or anything like that. So what should using our macro look like?
 
 #+BEGIN_SRC common-lisp
 (sql :select *
@@ -120,11 +162,16 @@ going to ignore them because I can :upside_down:
 ** Defining our output target
 Once we know what our macro should look like being called, then we're going to consider what our
 output code should look like. Macros produce code, so we want to write some code that will do the
-heavy lifting of turning the data into our SQL as strings. Our macros won't output the strings, our
-macros will be an interface that we use to call our ugly functions more cleanly. So the functions
-we'll want are the following:
+heavy lifting of turning the data into our SQL as strings. Our macros won't output the SQL strings, 
+our macros will be an interface that we use to call our ugly functions more cleanly. So the
+functions we'll want are the following:
 
-#+begin_src common-lisp
-(defun create-select ())
+#+begin_src lisp
+(defun create-select (&rest columns) ...)
+(defun create-from (&rest tables) ...)
+(defun create-where (&rest conditions) ...)
 #+end_src
+
+
+
 
