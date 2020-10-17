@@ -20,61 +20,94 @@
 - In practice, it's just another abstraction tool.
   - Just like objects in OOP or higher-order functions in FP.
 
-* A simple do-while loop
+* A simple while loop
 
-#+BEGIN_SRC common-lisp
-(defun a-function (cond)
-  (do-something)
-  (loop while cond do
-    (do-something)))
+In Lisp, as we all know, we tend to favour recursion. Afterall, why not? Tail-recursion just gets
+optmized into loops anyways, so it's not like we're loosing much performance. Let's look at what
+happens if we take a common pattern for a loop and make it recursive following the same logic we'd
+use in Java:
+
+#+begin_src racket
+(define x 10)
+(define [looper x]
+  (when (> x 10)
+    (println x)
+    (set! x (- x 1))
+    (looper))
+(looper 10)
+#+end_src
+
+Now, this is just a while loop, and one of the great things about Lisp is that we can get rid of a
+lot of boilerplate - but boilerplate is exactly what this is - we need to define a function to do
+our looping for us and then call it. That's silly. 
+
+We can use macros to write our own while loop that uses tail-recursion so that we can write this
+pattern once and then use our abstraction every time instead:
+
+#+BEGIN_SRC scheme
+(define-syntax while
+  (syntax-rules ()
+    [(_ condition body ...)
+     (begin
+       (define [looper]
+         (when condition
+           body ...
+           (looper)))
+       (looper))]))
 #+END_SRC
 
-Here, we have a pattern that's very common - something that would be solved by having a ~do-while~
-loop. However, Common Lisp doesn't have a ~do-while~ loop. 
+Now, we can use our while loop as we'd expect:
 
-So, we'll create one ourselves:
+#+begin_src racket
+(define x 10)
+(while (> x 0)
+  (println x)
+  (set! x (- x 1)))
+#+end_src
 
-#+BEGIN_SRC common-lisp
-(defmacro do-while (cond &rest body)
-  `(progn
-     (progn . ,body)
-     (loop while ,cond do
-       (progn . ,body))))
-#+END_SRC
+And we have a while loop! Now, this doesn't implement break and continue, which might be helpful for
+a more serious implementation, but using Racket macros we could implement those too - we'll move on
+for now though.
 
-Now, whenever we call ~do-while~, it'll expand into a regular while loop with the first thing we want 
-to do before the loop. 
+We can use the ~expand-once~ function to see what our macros will output:
 
-We can use the ~macroexpand~ function to see what our macros will output:
-
-#+BEGIN_SRC common-lisp :results macroexpand
-> (macroexpand 
-    '(do-while cond
+#+BEGIN_SRC racket
+> (expand-once
+    '(while condition
        (do-something)))
 ;; Outputs
-(progn
-  (progn (do-something)
-  (while cond
-    (progn
-      (do-something)))))
+(begin 
+  (define looper
+    (lambda ()
+      (when condition 
+        (do-something) 
+        (looper))))
+  (looper))
 #+END_SRC
 
-* What's wrong with functions?
-Nothing. They just serve adifferent purpose. Let's try implementing our ~do-while~ loop using a 
-function, and we'll see how different this is now:
+And this is exactly what we expect it to be! We can use this ~expand-once~ to inspect our
+macro-expansions and debug them.
 
-#+BEGIN_SRC common-lisp
-(defun do-while (cond body)
-  (funcall body)
-  (loop while (funcall cond) do
-    (funcall body)))
+* What's wrong with functions?
+So this macro crap just expanded to a bunch of functions, why use them? What's wrong with functions?
+Nothing is wrong with functions. They just serve adifferent purpose. Let's try implementing our
+~do-while~ loop using a function, and we'll see how different this is now:
+
+#+BEGIN_SRC racket
+(define [while condition body]
+  (when (condition)
+    (body)
+    (while-loop condition body)))
 #+END_SRC
 
 This looks like it'll work fine, but what about when we want to try actually using this?
 
-#+BEGIN_SRC common-lisp
-(do-while (lambda () cond)
-  (lambda () (do-something)))
+#+BEGIN_SRC racket
+(define x 10)
+(while (lambda () (> x 10))
+  (lambda () 
+    (println x)
+    (set! x (- x 1))))
 #+END_SRC
 
 Now everything is just wrapped in ~lambda~, which, while it works, is pretty ugly and much more 
@@ -87,91 +120,136 @@ way that we could do by writing functions or creating new classes.
 If you're still not convinced, here's a macro that would allow us to pipe our data between function
 calls so that we don't need to have deep nested calls:
 
-#+begin_src lisp
-(defmacro -> (exp &rest funcalls)
-  (reduce (lambda (a x)
-            (let* ((found nil)
-                   (insert (loop for el in x collect
-                             (cond
-                               ((eq el '_)
-                                (setf found t)
-                                a)
-                               (t el)))))
-              (if found
-                  insert
-                  (cons (car x) (cons a (cdr x))))))
-          funcalls
-          :initial-value exp))
+#+begin_src scheme
+(define-syntax ->>
+  (syntax-rules ()
+    [(_ x) x]
+    [(_ x (f ...))
+     (f ... x)]
+    [(_ x f)
+     (f x)]
+    [(_ x f g ...)
+     (-> (-> x f) g ...)]))
 #+end_src
 
 Now if we wanted to run a list through a sequence of operations, instead of nesting them like 
 
-#+begin_src common-lisp
-(reduce #'reducer 
-        (remove-if #'pred 
-                   (mapcar #'mapper list)))
+#+begin_src racket
+(foldl reducer 
+        (filter predicate
+                   (map mapper lst)))
 #+end_src
 
 We can do 
 
-#+begin_src emacs-lisp
-(-> list 
-    (mapcar #'mapper _)
-    (remove-if #'pred _)
-    (reduce #'reducer _))
+#+begin_src racket
+(->> lst 
+     (map mapper)
+     (filter predicate)
+     (foldl reducer))
 #+end_src
 
 Which is much clearer about what we're doing here than simply having a bunch of nested function
-calls. We could also easily construct the ~->>~ variation of the threading macro that defaults to
-inserting the argument as the last parameter so that we can omit the underscores.
+calls. We could also easily construct the ~->~ variation of the threading macro that defaults to
+inserting the argument as the first parameter.
 
-* SQL in Lisp
-
-So now that I'm sure you're all convinced macros are a good tool, we're going to use them to create
-an small DSL for writing SQL queries. In most languages, you need to write SQL queries as a string
-or as a JSON object or chain some function calls together or something. We're going to try to
-replicate SQL syntax in Lisp. 
-
-** Defining our goal
-The first thing that we're going to do is look at what the normal SQL looks like to try and define
-our goal for what we want our Lisp macro to look like when being called.
-
-Let's look at a simple SQL query:
-
-#+BEGIN_SRC sql
-SELECT * 
-FROM tablename as tn
-WHERE tn.a = 20
-  AND tn.b is not null;
-#+END_SRC
-
-Our goal is for our Lisp code to look as similar to this as possible. We're only going to worry
-about defining the ~SELECT~, ~FROM~, and ~WHERE~ keywords in SQL, and we won't worry about manipulating
-tables, creating new databases, or anything like that. So what should using our macro look like?
-
-#+BEGIN_SRC common-lisp
-(sql :select *
-     :from (:tablename tn)
-     :where (and (= tn.a 20)
-                 (not (null tn.b))))
-#+END_SRC
-
-For now, I think this is a pretty close approximation. There's a couple issues with it, but I'm
-going to ignore them because I can :upside_down: 
-
-** Defining our output target
-Once we know what our macro should look like being called, then we're going to consider what our
-output code should look like. Macros produce code, so we want to write some code that will do the
-heavy lifting of turning the data into our SQL as strings. Our macros won't output the SQL strings, 
-our macros will be an interface that we use to call our ugly functions more cleanly. So the
-functions we'll want are the following:
+* Lisp as Lambdas
+A whole lot of what we do in Lisp can be boiled down to macros around lambdas. Our ~while~ loop is one
+example, but even ~let~ can be thought of as syntactic sugar over a lambda call:
 
 #+begin_src lisp
-(defun create-select (&rest columns) ...)
-(defun create-from (&rest tables) ...)
-(defun create-where (&rest conditions) ...)
+(let ((x 10) (y 20))
+  (+ x y))
 #+end_src
 
+Is functionally identical to the following:
 
+#+begin_src lisp
+((lambda (x y) 
+   (+ x y))
+ 10 20)
+#+end_src
 
+But we use ~let~ because it's much cleaner. Here's how ~let~ could be defined though:
+
+#+begin_src racket
+(define-syntax mlet
+  (syntax-rules ()
+    [(_ ((id value) ...) body ...)
+     ((lambda (id ...) body ...)
+      value ...)]))
+#+end_src
+
+As you can see, ~let~ is just a simple macro around an immediately invoked lambda. Another useful form
+for ~let~ is the /named/ ~let~, which allows us to call our ~let~ block recursively. Again, we can define this
+almost entirely in terms of lambdas.
+
+#+begin_src racket
+(define-syntax rec
+  (syntax-rules ()
+    [(_ (name . args) body ...)
+     (rec name (lambda args body ...))]
+    [(_ name value)
+     (let ()
+       (define name value)
+       name)]))
+       
+(define-syntax nlet
+  (syntax-rules ()
+    [(_ tag ((id value) ...) body ...)
+     ((rec (tag id ...) 
+        body ...) 
+      value ...)]))
+#+end_src
+
+Of course we have a ~let~ in the ~rec~ macro, but that's alright because we've already defined our ~let~
+macro. We also have a single ~define~, which is also alright because ~define~ is a core primitive, we
+need it to be able to define recursion unless we want to start using lambda calculus.
+
+We can now use our ~nlet~ like this:
+
+#+begin_src racket
+(define some-list (list 1 2 3 4 5 6 7 8 9 10))
+(nlet sum ([lst some-list])
+  (if (empty? lst) 
+      0 
+      (+ (car lst) (sum (cdr lst)))))
+#+end_src
+
+And this will return the sum of every element in our list. 
+
+** Macros in unexpected places
+Macros are so prevalent, that not only can our control flow contructs be built using them, but even
+much more unsuspecting things. Consider the following function:
+
+ #+begin_src racket
+(define/match [or . args]
+  [((list)) #true]
+  [((list x)) x]
+  [((cons x xs)) (if x x (apply or xs))])
+ #+end_src
+
+ This looks like a pretty reasonable definition for a logical ~or~. Say we call it as
+
+#+begin_src racket
+(or #f #f 10 #f)
+#+end_src
+
+Then it'll return ~10~ as expected, because ~or~ in Lisp doesn't return a boolean but rather the first
+non-false element. So this is exactly what we expect. But what about if we do this:
+
+#+begin_src racket
+(or #t (some-long-function-to-compute))
+#+end_src
+
+Then we're gonna run into an issue, because the long function is going to be execute so that it's
+output can be passed to ~or~, which means even though this ~or~ is always going to be true, we have to
+wait anyways for this function. 
+
+We can instead redefine our ~and~ and ~or~ constructs to be macros instead so that we evaluate one at a
+time and don't compute values needlessly - that way as soon as one value is true, we can say our ~or~
+is true:
+
+#+begin_src racket
+#+end_src
 
