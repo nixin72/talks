@@ -88,6 +88,48 @@ We can use the ~expand-once~ function to see what our macros will output:
 And this is exactly what we expect it to be! We can use this ~expand-once~ to inspect our
 macro-expansions and debug them.
 
+** How does this work?
+In most programming languages, there's this dichotomy of code and data. In Lisp languages, this
+dichotomy doesn't exist. Consider the following code:
+
+#+begin_src racket
+(println (let ([x 10] [y 20])
+            (* x y)))
+#+end_src
+
+This code will calculate the product of ~x~ and ~y~, and then print it. It's pretty straighforards. But
+how about if we make a small modification to it:
+
+#+begin_src racket
+(println '(let ([x 10] [y 20])
+             (* x y)))
+#+end_src
+
+All we've done is added a single ~'~ in front of the ~let~, and the meaning of this code has completely
+changed. Instead of the argument to ~println~ being an expression that calculates and returns a
+result, the argument is now a linked list with 3 elements: ~let~, ~([x 10] [y 20])~ and ~(* x
+y)~. Completely different meaning now. 
+
+When we define functions, the parameters to those functions are evaluated before being passed in,
+whereas in macros they're not. The arguments to our macros are the code itself. This is a little
+easier to see in Common Lisp than in Racket. We'll define a simple Common Lisp macro here:
+
+#+begin_src lisp
+> (defmacro example (x)
+    (print x)
+    x)
+
+> (example (let ((x 10) (y 20))
+             (* x y)))
+(LET ((X 10) (Y 20)) 
+  (* X Y))
+200
+#+end_src
+
+When we run this, the macro will print out it's argument, which isn't what our ~let~ evaluates too,
+but rather the ~let~ itself. So the arguments to our macros is the /code/ we pass to it, which it's able
+to manipulate as linked lists using the same old ~car~, ~cdr~ and ~cons~ that we use all the time.
+
 * What's wrong with functions?
 So this macro crap just expanded to a bunch of functions, why use them? What's wrong with functions?
 Nothing is wrong with functions. They just serve adifferent purpose. Let's try implementing our
@@ -232,7 +274,7 @@ much more unsuspecting things. Consider the following function:
  This looks like a pretty reasonable definition for a logical ~or~. Say we call it as
 
 #+begin_src racket
-(or #f #f 10 #f)
+(or #false #false 10 #false)
 #+end_src
 
 Then it'll return ~10~ as expected, because ~or~ in Lisp doesn't return a boolean but rather the first
@@ -251,5 +293,98 @@ time and don't compute values needlessly - that way as soon as one value is true
 is true:
 
 #+begin_src racket
+(define-syntax or
+  (syntax-rules ()
+    [(_) #true]
+    [(_ x) x]
+    [(_ x xs ...)
+     (if x x (or xs ...))]))
 #+end_src
 
+This way, instead of computing every argument, we have a series of if-expressions, which will only
+evaluate branches that it needs to go into.
+
+* Language-Oriented Programming
+So macros can be used for a lot. We've used them to define looping constructs, logical operators,
+recursive blocks, threading macros. and we could define a whole lot more. We can build entire 
+languages out of macros, and that's something Racket does really well. Racket is a language that was
+designed to do /language-oriented programming/. 
+
+** Riposte
+Riposte is a language built on-top of Racket designed to be a scripting language for testing REST
+APIs. Here's how you'd ensure a JSON response matches a specified schema:
+
+#+begin_src racket
+#lang riposte
+
+$schema := {
+  "type": "object",
+  "requiredProperties": ["age", "weight"]
+}
+
+POST $payload to api/flub satisfies schema $schema
+#+end_src
+
+Now, this looks /nothing/ like any of the code we saw above, what is this? At the top of every Racket
+file, we include the line ~#lang racket~. This tells the Racket compiler which /reader/ to use to parse
+the following file. When we use ~#lang racket~, it uses the default Racket reader. But if we change
+that to ~#lang riposte~, then it uses a completely different reader. This allows us to not only expand
+the syntax or our language using ~define-syntax~ but completely break away from s-expressions using
+reader macros. Now, it's important to keep in mind that even though you're essentially providing
+your own parser here, this is /still/ a macro system because your custom reader need to expand to
+plain old Racket code. We can use reader macros to make some pretty impressive things:
+
+#+begin_src java
+#lang profj/full
+ 
+class Example {
+  static String result = null;
+  public static void Main(String[] args) {
+    result = "Hi";
+  }
+}
+#+end_src
+
+This is a snippet pulled from the Racket docs for a language called ProfessorJ - it's an
+implementation of Java using Racket reader macros.
+
+** Types
+Notice how in the Java/Racket code above we have /static typing/. Since the reader-macros are one of
+the first things to run in the compilation process and they just need to output valid Racket code,
+it means that you can have full compile-time type checking in Racket. Typed-Racket, which is a
+gradually typed ~#lang~ that ships with Racket, allows proper static typing with compile-time type
+errors. This means that even though your static typing comes from a library, it's still proper
+compile-time static type checks. There's even an implementation of Haskell in Racket called Hackett
+that demonstrates the flexibility of Racket's macros to implement a very sophisticated static type
+system.
+
+* What to do with this
+Racket provides some insanely powerful meta-programming facilities. From ~define-syntax~ to reader
+macros, we have /a lot/ of flexibility. But what do we use it for? 
+
+As mentioned at the beginning of all of this, macros are just another abstraction tool, just like
+objects or functions. Sometimes an idea that you're trying to express can't really be done cleanly
+in the language that you're using. In those cases, we can build macros to wrap around the idea that
+you're trying to express. 
+
+For example, SQL is a declarative programming language and it's a very clean way of representing
+queries across data. We can of course try to represent SQL queries by chaining functions, and that
+tends to be the way that we do it, but it's never as nice as just SQL. For example, in C# when
+writing database queries you can lean on LINQ to write queries using SQL-like syntax. In Racket, we
+can of course do that using macros. While we're not going to build our own macros around SQL syntax,
+we could easily build a ~#lang~ reader macro that would emulate SQL syntax, or we could write one
+using ~define-syntax~. Something that looks like this:
+
+#+begin_src racket
+(sql #:select *
+     #:from table-name as tn
+     #:where tn/a is not null)
+#+end_src
+
+* Conclusion
+Meta-programming and macros allow some very powerful transformations in Lisp, which facilitate the
+creation of new abstractions that we don't really have access to in almost any other language. While
+macros are getting more popular with languages like Rust and Nim implementing them, and even a new
+proposal for Python ([[https://www.python.org/dev/peps/pep-0638/?ref=hvper.com][PEP 638]]) to implement syntactic macros, Lisp is able to use them so naturally
+because of the lack of the dichotomy between code and data, which allows macros to be extremely
+prevalent throughout Lisp programs.
