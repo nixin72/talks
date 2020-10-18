@@ -41,6 +41,8 @@ Now, this is just a while loop, and one of the great things about Lisp is that w
 lot of boilerplate - but boilerplate is exactly what this is - we need to define a function to do
 our looping for us and then call it. That's silly. 
 
+* First look at macros
+
 We can use macros to write our own while loop that uses tail-recursion so that we can write this
 pattern once and then use our abstraction every time instead:
 
@@ -69,6 +71,8 @@ And we have a while loop! Now, this doesn't implement break and continue, which 
 a more serious implementation, but using Racket macros we could implement those too - we'll move on
 for now though.
 
+* Inspecting and debugging macros
+
 We can use the ~expand-once~ function to see what our macros will output:
 
 #+BEGIN_SRC racket
@@ -88,7 +92,7 @@ We can use the ~expand-once~ function to see what our macros will output:
 And this is exactly what we expect it to be! We can use this ~expand-once~ to inspect our
 macro-expansions and debug them.
 
-** How does this work?
+* How does this work?
 In most programming languages, there's this dichotomy of code and data. In Lisp languages, this
 dichotomy doesn't exist. Consider the following code:
 
@@ -109,6 +113,8 @@ All we've done is added a single ~'~ in front of the ~let~, and the meaning of t
 changed. Instead of the argument to ~println~ being an expression that calculates and returns a
 result, the argument is now a linked list with 3 elements: ~let~, ~([x 10] [y 20])~ and ~(* x
 y)~. Completely different meaning now. 
+
+* A quick detour to Common Lisp
 
 When we define functions, the parameters to those functions are evaluated before being passed in,
 whereas in macros they're not. The arguments to our macros are the code itself. This is a little
@@ -158,7 +164,7 @@ verbose than before.
 So we can use macros as just another abstraction tool to simplify and clean up our code in the same
 way that we could do by writing functions or creating new classes.
 
-*** Threading macros
+* Threading macros
 If you're still not convinced, here's a macro that would allow us to pipe our data between function
 calls so that we don't need to have deep nested calls:
 
@@ -166,20 +172,15 @@ calls so that we don't need to have deep nested calls:
 (define-syntax ->>
   (syntax-rules ()
     [(_ x) x]
-    [(_ x (f ...))
-     (f ... x)]
-    [(_ x f)
-     (f x)]
-    [(_ x f g ...)
-     (-> (-> x f) g ...)]))
+    [(_ x f) (f x)]
+    [(_ x (f ...)) (f ... x)]
+    [(_ x f g ...) (-> (-> x f) g ...)]))
 #+end_src
 
 Now if we wanted to run a list through a sequence of operations, instead of nesting them like 
 
 #+begin_src racket
-(foldl reducer 
-        (filter predicate
-                   (map mapper lst)))
+(foldl reducer (filter predicate (map mapper lst)))
 #+end_src
 
 We can do 
@@ -222,9 +223,11 @@ But we use ~let~ because it's much cleaner. Here's how ~let~ could be defined th
       value ...)]))
 #+end_src
 
-As you can see, ~let~ is just a simple macro around an immediately invoked lambda. Another useful form
-for ~let~ is the /named/ ~let~, which allows us to call our ~let~ block recursively. Again, we can define this
-almost entirely in terms of lambdas.
+As you can see, ~let~ is just a simple macro around an immediately invoked lambda. 
+
+* Named ~let~
+Another useful form for ~let~ is the /named/ ~let~, which allows us to call our ~let~ block recursively. 
+Again, we can define this almost entirely in terms of lambdas.
 
 #+begin_src racket
 (define-syntax rec
@@ -246,21 +249,17 @@ almost entirely in terms of lambdas.
 
 Of course we have a ~let~ in the ~rec~ macro, but that's alright because we've already defined our ~let~
 macro. We also have a single ~define~, which is also alright because ~define~ is a core primitive, we
-need it to be able to define recursion unless we want to start using lambda calculus.
+need it to be able to define recursion unless we want to dig into the lambda calculus y-combinator.
 
-We can now use our ~nlet~ like this:
+We can now use our ~nlet~ like below, and it will return the sum of all the elements in the list.
 
 #+begin_src racket
-(define some-list (list 1 2 3 4 5 6 7 8 9 10))
-(nlet sum ([lst some-list])
-  (if (empty? lst) 
-      0 
+(nlet sum ([lst (list 1 2 3 4 5 6 7 8 9 10)])
+  (if (empty? lst) 0 
       (+ (car lst) (sum (cdr lst)))))
 #+end_src
 
-And this will return the sum of every element in our list. 
-
-** Macros in unexpected places
+* Macros in unexpected places
 Macros are so prevalent, that not only can our control flow contructs be built using them, but even
 much more unsuspecting things. Consider the following function:
 
@@ -288,6 +287,8 @@ Then we're gonna run into an issue, because the long function is going to be exe
 output can be passed to ~or~, which means even though this ~or~ is always going to be true, we have to
 wait anyways for this function. 
 
+* Boolean operators as macros
+
 We can instead redefine our ~and~ and ~or~ constructs to be macros instead so that we evaluate one at a
 time and don't compute values needlessly - that way as soon as one value is true, we can say our ~or~
 is true:
@@ -310,7 +311,7 @@ recursive blocks, threading macros. and we could define a whole lot more. We can
 languages out of macros, and that's something Racket does really well. Racket is a language that was
 designed to do /language-oriented programming/. 
 
-** Riposte
+* Riposte
 Riposte is a language built on-top of Racket designed to be a scripting language for testing REST
 APIs. Here's how you'd ensure a JSON response matches a specified schema:
 
@@ -332,8 +333,10 @@ that to ~#lang riposte~, then it uses a completely different reader. This allows
 the syntax or our language using ~define-syntax~ but completely break away from s-expressions using
 reader macros. Now, it's important to keep in mind that even though you're essentially providing
 your own parser here, this is /still/ a macro system because your custom reader need to expand to
-plain old Racket code. We can use reader macros to make some pretty impressive things:
+plain old Racket code. 
 
+* ProfessorJ
+We can use reader macros to make some pretty impressive things:
 #+begin_src java
 #lang profj/full
  
@@ -348,7 +351,7 @@ class Example {
 This is a snippet pulled from the Racket docs for a language called ProfessorJ - it's an
 implementation of Java using Racket reader macros.
 
-** Types
+* Macros and types
 Notice how in the Java/Racket code above we have /static typing/. Since the reader-macros are one of
 the first things to run in the compilation process and they just need to output valid Racket code,
 it means that you can have full compile-time type checking in Racket. Typed-Racket, which is a

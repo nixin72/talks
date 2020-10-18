@@ -12,6 +12,6 @@
 (define-syntax mlet
   (syntax-rules ()
     [(_ tag ((id value) ...) body ...)
-     ((rec (tag id ...) 
+     ((rec (tag id ...)
         body ...) 
       value ...)]))
