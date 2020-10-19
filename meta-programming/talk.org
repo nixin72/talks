@@ -49,7 +49,7 @@ our looping for us and then call it. That's silly.
 We can use macros to write our own while loop that uses tail-recursion so that we can write this
 pattern once and then use our abstraction every time instead:
 
-#+BEGIN_SRC scheme
+#+BEGIN_SRC racket
 (define-syntax while
   (syntax-rules ()
     [(_ condition body ...)
@@ -174,7 +174,7 @@ way that we could do by writing functions or creating new classes.
 If you're still not convinced, here's a macro that would allow us to pipe our data between function
 calls so that we don't need to have deep nested calls:
 
-#+begin_src scheme
+#+begin_src racket
 (define-syntax ->>
   (syntax-rules ()
     [(_ x) x]
@@ -183,13 +183,15 @@ calls so that we don't need to have deep nested calls:
     [(_ x y z ...) (->> (->> x y) z ...)]))
 #+end_src
 
-Now if we wanted to run a list through a sequence of operations, instead of nesting them like 
+Now if we wanted to run a list through a sequence of operations, we pipe them instead of nesting.
 
 #+begin_src racket
-(foldl reducer (filter predicate (map mapper lst)))
+(foldr (lambda (a x) (+ a x)) 
+       0 
+       (map (lambda (x) (* x 2)) 
+            (filter (lambda (x) (even? x))
+                    (list 1 2 3 4 5)))))
 #+end_src
-
-We can do 
 
 #+begin_src racket
 (->> (list 1 2 3 4 5)
@@ -207,14 +209,14 @@ inserting the argument as the first parameter.
 A whole lot of what we do in Lisp can be boiled down to macros around lambdas. Our ~while~ loop is one
 example, but even ~let~ can be thought of as syntactic sugar over a lambda call:
 
-#+begin_src lisp
+#+begin_src racket
 (let ((x 10) (y 20))
   (* x y))
 #+end_src
 
 Is functionally identical to the following:
 
-#+begin_src lisp
+#+begin_src racket
 ((lambda (x y) 
    (* x y))
  10 20)
