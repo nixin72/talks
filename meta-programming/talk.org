@@ -3,11 +3,13 @@
 #+HTML_HEAD: <link rel="stylesheet" type="text/css" href="/s/repos/dotfiles/.emacs.d/src/languages/my-org-css.css" />
 
 * What is meta programming?
+
 - The ability to treat our code as data
 - Using information about our source code in our program
 - Ex. In C# we can use reflection to get a list of all properties of an object
 
 * What are macros?
+
 - Macros are the ability to transform our code at compile time
 - Macros are a form of meta programming
   - They analyze the code provided to them as data
@@ -15,6 +17,7 @@
 - In Lisp, we can create macros as simply as writing a function
 
 * Why write macros?
+
 - In what scenario would we really need to transform our syntax?
 - Sounds like complex theory crap that we shouldn't worry about
 - In practice, it's just another abstraction tool.
@@ -29,12 +32,12 @@ use in Java:
 
 #+begin_src racket
 (define x 10)
-(define [looper x]
-  (when (> x 10)
+(define [looper]
+  (when (> x 0)
     (println x)
     (set! x (- x 1))
-    (looper))
-(looper 10)
+    (looper)))
+(looper)
 #+end_src
 
 Now, this is just a while loop, and one of the great things about Lisp is that we can get rid of a
@@ -93,6 +96,7 @@ And this is exactly what we expect it to be! We can use this ~expand-once~ to in
 macro-expansions and debug them.
 
 * How does this work?
+
 In most programming languages, there's this dichotomy of code and data. In Lisp languages, this
 dichotomy doesn't exist. Consider the following code:
 
@@ -137,12 +141,13 @@ but rather the ~let~ itself. So the arguments to our macros is the /code/ we pas
 to manipulate as linked lists using the same old ~car~, ~cdr~ and ~cons~ that we use all the time.
 
 * What's wrong with functions?
+
 So this macro crap just expanded to a bunch of functions, why use them? What's wrong with functions?
 Nothing is wrong with functions. They just serve adifferent purpose. Let's try implementing our
-~do-while~ loop using a function, and we'll see how different this is now:
+~while~ loop using a function, and we'll see how different this is now:
 
 #+BEGIN_SRC racket
-(define [while condition body]
+(define [while-loop condition body]
   (when (condition)
     (body)
     (while-loop condition body)))
@@ -152,7 +157,7 @@ This looks like it'll work fine, but what about when we want to try actually usi
 
 #+BEGIN_SRC racket
 (define x 10)
-(while (lambda () (> x 10))
+(while-loop (lambda () (> x 0))
   (lambda () 
     (println x)
     (set! x (- x 1))))
@@ -165,6 +170,7 @@ So we can use macros as just another abstraction tool to simplify and clean up o
 way that we could do by writing functions or creating new classes.
 
 * Threading macros
+
 If you're still not convinced, here's a macro that would allow us to pipe our data between function
 calls so that we don't need to have deep nested calls:
 
@@ -172,9 +178,9 @@ calls so that we don't need to have deep nested calls:
 (define-syntax ->>
   (syntax-rules ()
     [(_ x) x]
-    [(_ x f) (f x)]
     [(_ x (f ...)) (f ... x)]
-    [(_ x f g ...) (-> (-> x f) g ...)]))
+    [(_ x y) (y x)]
+    [(_ x y z ...) (->> (->> x y) z ...)]))
 #+end_src
 
 Now if we wanted to run a list through a sequence of operations, instead of nesting them like 
@@ -186,10 +192,10 @@ Now if we wanted to run a list through a sequence of operations, instead of nest
 We can do 
 
 #+begin_src racket
-(->> lst 
-     (map mapper)
-     (filter predicate)
-     (foldl reducer))
+(->> (list 1 2 3 4 5)
+     (filter (lambda (x) (even? x)))
+     (map (lambda (x) (* x 2)))
+     (foldr (lambda (a x) (+ a x)) 0))
 #+end_src
 
 Which is much clearer about what we're doing here than simply having a bunch of nested function
@@ -197,19 +203,20 @@ calls. We could also easily construct the ~->~ variation of the threading macro 
 inserting the argument as the first parameter.
 
 * Lisp as Lambdas
+
 A whole lot of what we do in Lisp can be boiled down to macros around lambdas. Our ~while~ loop is one
 example, but even ~let~ can be thought of as syntactic sugar over a lambda call:
 
 #+begin_src lisp
 (let ((x 10) (y 20))
-  (+ x y))
+  (* x y))
 #+end_src
 
 Is functionally identical to the following:
 
 #+begin_src lisp
 ((lambda (x y) 
-   (+ x y))
+   (* x y))
  10 20)
 #+end_src
 
@@ -226,6 +233,7 @@ But we use ~let~ because it's much cleaner. Here's how ~let~ could be defined th
 As you can see, ~let~ is just a simple macro around an immediately invoked lambda. 
 
 * Named ~let~
+
 Another useful form for ~let~ is the /named/ ~let~, which allows us to call our ~let~ block recursively. 
 Again, we can define this almost entirely in terms of lambdas.
 
@@ -260,6 +268,7 @@ We can now use our ~nlet~ like below, and it will return the sum of all the elem
 #+end_src
 
 * Macros in unexpected places
+
 Macros are so prevalent, that not only can our control flow contructs be built using them, but even
 much more unsuspecting things. Consider the following function:
 
@@ -306,12 +315,14 @@ This way, instead of computing every argument, we have a series of if-expression
 evaluate branches that it needs to go into.
 
 * Language-Oriented Programming
+
 So macros can be used for a lot. We've used them to define looping constructs, logical operators,
 recursive blocks, threading macros. and we could define a whole lot more. We can build entire 
 languages out of macros, and that's something Racket does really well. Racket is a language that was
 designed to do /language-oriented programming/. 
 
 * Riposte
+
 Riposte is a language built on-top of Racket designed to be a scripting language for testing REST
 APIs. Here's how you'd ensure a JSON response matches a specified schema:
 
@@ -336,12 +347,15 @@ your own parser here, this is /still/ a macro system because your custom reader 
 plain old Racket code. 
 
 * ProfessorJ
+
 We can use reader macros to make some pretty impressive things:
+
 #+begin_src java
 #lang profj/full
  
 class Example {
   static String result = null;
+
   public static void Main(String[] args) {
     result = "Hi";
   }
@@ -352,6 +366,7 @@ This is a snippet pulled from the Racket docs for a language called ProfessorJ -
 implementation of Java using Racket reader macros.
 
 * Macros and types
+
 Notice how in the Java/Racket code above we have /static typing/. Since the reader-macros are one of
 the first things to run in the compilation process and they just need to output valid Racket code,
 it means that you can have full compile-time type checking in Racket. Typed-Racket, which is a
@@ -362,6 +377,7 @@ that demonstrates the flexibility of Racket's macros to implement a very sophist
 system.
 
 * What to do with this
+
 Racket provides some insanely powerful meta-programming facilities. From ~define-syntax~ to reader
 macros, we have /a lot/ of flexibility. But what do we use it for? 
 
@@ -381,10 +397,11 @@ using ~define-syntax~. Something that looks like this:
 #+begin_src racket
 (sql #:select *
      #:from table-name as tn
-     #:where tn/a is not null)
+     #:where tn.a is not null)
 #+end_src
 
 * Conclusion
+
 Meta-programming and macros allow some very powerful transformations in Lisp, which facilitate the
 creation of new abstractions that we don't really have access to in almost any other language. While
 macros are getting more popular with languages like Rust and Nim implementing them, and even a new
