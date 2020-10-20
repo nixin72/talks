@@ -1,6 +1,6 @@
 #+TITLE: Meta Programming and Macros
 #+Author: Philip Dumaresq
-#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="/s/repos/dotfiles/.emacs.d/src/languages/my-org-css.css" />
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="../assets/org.css" />
 
 * What is meta programming?
 
