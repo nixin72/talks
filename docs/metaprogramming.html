@@ -1,0 +1,868 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<!-- 2020-10-19 Mon 21:10 -->
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Meta Programming and Macros</title>
+<meta name="generator" content="Org mode" />
+<meta name="author" content="Philip Dumaresq" />
+<style type="text/css">
+ <!--/*--><![CDATA[/*><!--*/
+  .title  { text-align: center;
+             margin-bottom: .2em; }
+  .subtitle { text-align: center;
+              font-size: medium;
+              font-weight: bold;
+              margin-top:0; }
+  .todo   { font-family: monospace; color: red; }
+  .done   { font-family: monospace; color: green; }
+  .priority { font-family: monospace; color: orange; }
+  .tag    { background-color: #eee; font-family: monospace;
+            padding: 2px; font-size: 80%; font-weight: normal; }
+  .timestamp { color: #bebebe; }
+  .timestamp-kwd { color: #5f9ea0; }
+  .org-right  { margin-left: auto; margin-right: 0px;  text-align: right; }
+  .org-left   { margin-left: 0px;  margin-right: auto; text-align: left; }
+  .org-center { margin-left: auto; margin-right: auto; text-align: center; }
+  .underline { text-decoration: underline; }
+  #postamble p, #preamble p { font-size: 90%; margin: .2em; }
+  p.verse { margin-left: 3%; }
+  pre {
+    border: 1px solid #ccc;
+    box-shadow: 3px 3px 3px #eee;
+    padding: 8pt;
+    font-family: monospace;
+    overflow: auto;
+    margin: 1.2em;
+  }
+  pre.src {
+    position: relative;
+    overflow: visible;
+    padding-top: 1.2em;
+  }
+  pre.src:before {
+    display: none;
+    position: absolute;
+    background-color: white;
+    top: -10px;
+    right: 10px;
+    padding: 3px;
+    border: 1px solid black;
+  }
+  pre.src:hover:before { display: inline;}
+  /* Languages per Org manual */
+  pre.src-asymptote:before { content: 'Asymptote'; }
+  pre.src-awk:before { content: 'Awk'; }
+  pre.src-C:before { content: 'C'; }
+  /* pre.src-C++ doesn't work in CSS */
+  pre.src-clojure:before { content: 'Clojure'; }
+  pre.src-css:before { content: 'CSS'; }
+  pre.src-D:before { content: 'D'; }
+  pre.src-ditaa:before { content: 'ditaa'; }
+  pre.src-dot:before { content: 'Graphviz'; }
+  pre.src-calc:before { content: 'Emacs Calc'; }
+  pre.src-emacs-lisp:before { content: 'Emacs Lisp'; }
+  pre.src-fortran:before { content: 'Fortran'; }
+  pre.src-gnuplot:before { content: 'gnuplot'; }
+  pre.src-haskell:before { content: 'Haskell'; }
+  pre.src-hledger:before { content: 'hledger'; }
+  pre.src-java:before { content: 'Java'; }
+  pre.src-js:before { content: 'Javascript'; }
+  pre.src-latex:before { content: 'LaTeX'; }
+  pre.src-ledger:before { content: 'Ledger'; }
+  pre.src-lisp:before { content: 'Lisp'; }
+  pre.src-lilypond:before { content: 'Lilypond'; }
+  pre.src-lua:before { content: 'Lua'; }
+  pre.src-matlab:before { content: 'MATLAB'; }
+  pre.src-mscgen:before { content: 'Mscgen'; }
+  pre.src-ocaml:before { content: 'Objective Caml'; }
+  pre.src-octave:before { content: 'Octave'; }
+  pre.src-org:before { content: 'Org mode'; }
+  pre.src-oz:before { content: 'OZ'; }
+  pre.src-plantuml:before { content: 'Plantuml'; }
+  pre.src-processing:before { content: 'Processing.js'; }
+  pre.src-python:before { content: 'Python'; }
+  pre.src-R:before { content: 'R'; }
+  pre.src-ruby:before { content: 'Ruby'; }
+  pre.src-sass:before { content: 'Sass'; }
+  pre.src-scheme:before { content: 'Scheme'; }
+  pre.src-screen:before { content: 'Gnu Screen'; }
+  pre.src-sed:before { content: 'Sed'; }
+  pre.src-sh:before { content: 'shell'; }
+  pre.src-sql:before { content: 'SQL'; }
+  pre.src-sqlite:before { content: 'SQLite'; }
+  /* additional languages in org.el's org-babel-load-languages alist */
+  pre.src-forth:before { content: 'Forth'; }
+  pre.src-io:before { content: 'IO'; }
+  pre.src-J:before { content: 'J'; }
+  pre.src-makefile:before { content: 'Makefile'; }
+  pre.src-maxima:before { content: 'Maxima'; }
+  pre.src-perl:before { content: 'Perl'; }
+  pre.src-picolisp:before { content: 'Pico Lisp'; }
+  pre.src-scala:before { content: 'Scala'; }
+  pre.src-shell:before { content: 'Shell Script'; }
+  pre.src-ebnf2ps:before { content: 'ebfn2ps'; }
+  /* additional language identifiers per "defun org-babel-execute"
+       in ob-*.el */
+  pre.src-cpp:before  { content: 'C++'; }
+  pre.src-abc:before  { content: 'ABC'; }
+  pre.src-coq:before  { content: 'Coq'; }
+  pre.src-groovy:before  { content: 'Groovy'; }
+  /* additional language identifiers from org-babel-shell-names in
+     ob-shell.el: ob-shell is the only babel language using a lambda to put
+     the execution function name together. */
+  pre.src-bash:before  { content: 'bash'; }
+  pre.src-csh:before  { content: 'csh'; }
+  pre.src-ash:before  { content: 'ash'; }
+  pre.src-dash:before  { content: 'dash'; }
+  pre.src-ksh:before  { content: 'ksh'; }
+  pre.src-mksh:before  { content: 'mksh'; }
+  pre.src-posh:before  { content: 'posh'; }
+  /* Additional Emacs modes also supported by the LaTeX listings package */
+  pre.src-ada:before { content: 'Ada'; }
+  pre.src-asm:before { content: 'Assembler'; }
+  pre.src-caml:before { content: 'Caml'; }
+  pre.src-delphi:before { content: 'Delphi'; }
+  pre.src-html:before { content: 'HTML'; }
+  pre.src-idl:before { content: 'IDL'; }
+  pre.src-mercury:before { content: 'Mercury'; }
+  pre.src-metapost:before { content: 'MetaPost'; }
+  pre.src-modula-2:before { content: 'Modula-2'; }
+  pre.src-pascal:before { content: 'Pascal'; }
+  pre.src-ps:before { content: 'PostScript'; }
+  pre.src-prolog:before { content: 'Prolog'; }
+  pre.src-simula:before { content: 'Simula'; }
+  pre.src-tcl:before { content: 'tcl'; }
+  pre.src-tex:before { content: 'TeX'; }
+  pre.src-plain-tex:before { content: 'Plain TeX'; }
+  pre.src-verilog:before { content: 'Verilog'; }
+  pre.src-vhdl:before { content: 'VHDL'; }
+  pre.src-xml:before { content: 'XML'; }
+  pre.src-nxml:before { content: 'XML'; }
+  /* add a generic configuration mode; LaTeX export needs an additional
+     (add-to-list 'org-latex-listings-langs '(conf " ")) in .emacs */
+  pre.src-conf:before { content: 'Configuration File'; }
+
+  table { border-collapse:collapse; }
+  caption.t-above { caption-side: top; }
+  caption.t-bottom { caption-side: bottom; }
+  td, th { vertical-align:top;  }
+  th.org-right  { text-align: center;  }
+  th.org-left   { text-align: center;   }
+  th.org-center { text-align: center; }
+  td.org-right  { text-align: right;  }
+  td.org-left   { text-align: left;   }
+  td.org-center { text-align: center; }
+  dt { font-weight: bold; }
+  .footpara { display: inline; }
+  .footdef  { margin-bottom: 1em; }
+  .figure { padding: 1em; }
+  .figure p { text-align: center; }
+  .equation-container {
+    display: table;
+    text-align: center;
+    width: 100%;
+  }
+  .equation {
+    vertical-align: middle;
+  }
+  .equation-label {
+    display: table-cell;
+    text-align: right;
+    vertical-align: middle;
+  }
+  .inlinetask {
+    padding: 10px;
+    border: 2px solid gray;
+    margin: 10px;
+    background: #ffffcc;
+  }
+  #org-div-home-and-up
+   { text-align: right; font-size: 70%; white-space: nowrap; }
+  textarea { overflow-x: auto; }
+  .linenr { font-size: smaller }
+  .code-highlighted { background-color: #ffff00; }
+  .org-info-js_info-navigation { border-style: none; }
+  #org-info-js_console-label
+    { font-size: 10px; font-weight: bold; white-space: nowrap; }
+  .org-info-js_search-highlight
+    { background-color: #ffff00; color: #000000; font-weight: bold; }
+  .org-svg { width: 90%; }
+  /*]]>*/-->
+</style>
+<link rel="stylesheet" type="text/css" href="/s/repos/dotfiles/.emacs.d/src/languages/my-org-css.css" />
+<script type="text/javascript">
+/*
+@licstart  The following is the entire license notice for the
+JavaScript code in this tag.
+
+Copyright (C) 2012-2020 Free Software Foundation, Inc.
+
+The JavaScript code in this tag is free software: you can
+redistribute it and/or modify it under the terms of the GNU
+General Public License (GNU GPL) as published by the Free Software
+Foundation, either version 3 of the License, or (at your option)
+any later version.  The code is distributed WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE.  See the GNU GPL for more details.
+
+As additional permission under GNU GPL version 3 section 7, you
+may distribute non-source (e.g., minimized or compacted) forms of
+that code without the copy of the GNU GPL normally required by
+section 4, provided you include this license notice and a URL
+through which recipients can access the Corresponding Source.
+
+
+@licend  The above is the entire license notice
+for the JavaScript code in this tag.
+*/
+<!--/*--><![CDATA[/*><!--*/
+ function CodeHighlightOn(elem, id)
+ {
+   var target = document.getElementById(id);
+   if(null != target) {
+     elem.cacheClassElem = elem.className;
+     elem.cacheClassTarget = target.className;
+     target.className = "code-highlighted";
+     elem.className   = "code-highlighted";
+   }
+ }
+ function CodeHighlightOff(elem, id)
+ {
+   var target = document.getElementById(id);
+   if(elem.cacheClassElem)
+     elem.className = elem.cacheClassElem;
+   if(elem.cacheClassTarget)
+     target.className = elem.cacheClassTarget;
+ }
+/*]]>*///-->
+</script>
+</head>
+<body>
+<div id="content">
+<h1 class="title">Meta Programming and Macros</h1>
+<div id="table-of-contents">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents">
+<ul>
+<li><a href="#orgac13632">What is meta programming?</a></li>
+<li><a href="#org0be9ec7">What are macros?</a></li>
+<li><a href="#org4932f17">Why write macros?</a></li>
+<li><a href="#org555576a">A simple while loop</a></li>
+<li><a href="#org517b5cc">First look at macros</a></li>
+<li><a href="#org84605f7">Inspecting and debugging macros</a></li>
+<li><a href="#org2502411">How does this work?</a></li>
+<li><a href="#org363131e">A quick detour to Common Lisp</a></li>
+<li><a href="#org3280913">What's wrong with functions?</a></li>
+<li><a href="#org7e11fd9">Threading macros</a></li>
+<li><a href="#org935a48e">Lisp as Lambdas</a></li>
+<li><a href="#orgb8720a7">Named <code>let</code></a></li>
+<li><a href="#orge6bde3f">Macros in unexpected places</a></li>
+<li><a href="#orgc439b6f">Boolean operators as macros</a></li>
+<li><a href="#org99e4394">Language-Oriented Programming</a></li>
+<li><a href="#org48fbfdc">Riposte</a></li>
+<li><a href="#org2465132">ProfessorJ</a></li>
+<li><a href="#org9b5998b">Macros and types</a></li>
+<li><a href="#org288ea7c">What to do with this</a></li>
+<li><a href="#orgfca8d7f">Conclusion</a></li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-orgac13632" class="outline-2">
+<h2 id="orgac13632">What is meta programming?</h2>
+<div class="outline-text-2" id="text-orgac13632">
+<ul class="org-ul">
+<li>The ability to treat our code as data</li>
+<li>Using information about our source code in our program</li>
+<li>Ex. In C# we can use reflection to get a list of all properties of an object</li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-org0be9ec7" class="outline-2">
+<h2 id="org0be9ec7">What are macros?</h2>
+<div class="outline-text-2" id="text-org0be9ec7">
+<ul class="org-ul">
+<li>Macros are the ability to transform our code at compile time</li>
+<li>Macros are a form of meta programming
+<ul class="org-ul">
+<li>They analyze the code provided to them as data</li>
+<li>Then they return new code to be compiled</li>
+</ul></li>
+<li>In Lisp, we can create macros as simply as writing a function</li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-org4932f17" class="outline-2">
+<h2 id="org4932f17">Why write macros?</h2>
+<div class="outline-text-2" id="text-org4932f17">
+<ul class="org-ul">
+<li>In what scenario would we really need to transform our syntax?</li>
+<li>Sounds like complex theory crap that we shouldn't worry about</li>
+<li>In practice, it's just another abstraction tool.
+<ul class="org-ul">
+<li>Just like objects in OOP or higher-order functions in FP.</li>
+</ul></li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-org555576a" class="outline-2">
+<h2 id="org555576a">A simple while loop</h2>
+<div class="outline-text-2" id="text-org555576a">
+<p>
+In Lisp, as we all know, we tend to favour recursion. Afterall, why not? Tail-recursion just gets
+optmized into loops anyways, so it's not like we're loosing much performance. Let's look at what
+happens if we take a common pattern for a loop and make it recursive following the same logic we'd
+use in Java:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-racket">(<span style="color: #51afef;">define</span> <span style="color: #dcaeea;">x</span> <span style="color: #2e8b57;">10</span><span style="color: #5B6268;">)</span>
+(<span style="color: #51afef;">define</span> [<span style="color: #c678dd;">looper</span><span style="color: #5B6268;">]</span>
+  (<span style="color: #51afef;">when</span> (<span style="color: #c678dd;">&gt;</span> x <span style="color: #2e8b57;">0</span><span style="color: #5B6268;">)</span>
+    (<span style="color: #c678dd;">println</span> x<span style="color: #5B6268;">)</span>
+    (<span style="color: #51afef;">set!</span> x (<span style="color: #c678dd;">-</span> x <span style="color: #2e8b57;">1</span><span style="color: #5B6268;">))</span>
+    (looper<span style="color: #5B6268;">)))</span>
+(looper<span style="color: #5B6268;">)</span>
+</pre>
+</div>
+
+<p>
+Now, this is just a while loop, and one of the great things about Lisp is that we can get rid of a
+lot of boilerplate - but boilerplate is exactly what this is - we need to define a function to do
+our looping for us and then call it. That's silly. 
+</p>
+</div>
+</div>
+
+<div id="outline-container-org517b5cc" class="outline-2">
+<h2 id="org517b5cc">First look at macros</h2>
+<div class="outline-text-2" id="text-org517b5cc">
+<p>
+We can use macros to write our own while loop that uses tail-recursion so that we can write this
+pattern once and then use our abstraction every time instead:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-racket">(<span style="color: #51afef;">define-syntax</span> <span style="color: #dcaeea;">while</span>
+  (<span style="color: #51afef;">syntax-rules</span> (<span style="color: #5B6268;">)</span>
+    [(<span style="color: #51afef;">_</span> condition body <span style="color: #51afef;">...</span><span style="color: #5B6268;">)</span>
+     (<span style="color: #51afef;">begin</span>
+       (<span style="color: #51afef;">define</span> [<span style="color: #c678dd;">looper</span><span style="color: #5B6268;">]</span>
+   (<span style="color: #51afef;">when</span> condition
+     body <span style="color: #51afef;">...</span>
+     (looper<span style="color: #5B6268;">)))</span>
+       (looper<span style="color: #5B6268;">))]))</span>
+</pre>
+</div>
+
+<p>
+Now, we can use our while loop as we'd expect:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-racket">(<span style="color: #51afef;">define</span> <span style="color: #dcaeea;">x</span> <span style="color: #2e8b57;">10</span><span style="color: #5B6268;">)</span>
+(while (<span style="color: #c678dd;">&gt;</span> x <span style="color: #2e8b57;">0</span><span style="color: #5B6268;">)</span>
+  (<span style="color: #c678dd;">println</span> x<span style="color: #5B6268;">)</span>
+  (<span style="color: #51afef;">set!</span> x (<span style="color: #c678dd;">-</span> x <span style="color: #2e8b57;">1</span><span style="color: #5B6268;">)))</span>
+</pre>
+</div>
+
+<p>
+And we have a while loop! Now, this doesn't implement break and continue, which might be helpful for
+a more serious implementation, but using Racket macros we could implement those too - we'll move on
+for now though.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org84605f7" class="outline-2">
+<h2 id="org84605f7">Inspecting and debugging macros</h2>
+<div class="outline-text-2" id="text-org84605f7">
+<p>
+We can use the <code>expand-once</code> function to see what our macros will output:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-racket"><span style="color: #c678dd;">&gt;</span> (<span style="color: #c678dd;">expand-once</span>
+    '(while condition
+       (do-something<span style="color: #5B6268;">)))</span>
+<span style="color: #5B6268;">;; </span><span style="color: #5B6268;">Outputs</span>
+(<span style="color: #51afef;">begin</span> 
+  (<span style="color: #51afef;">define</span> <span style="color: #dcaeea;">looper</span>
+    (<span style="color: #51afef;">lambda</span> (<span style="color: #5B6268;">)</span>
+      (<span style="color: #51afef;">when</span> condition 
+  (do-something) 
+  (looper<span style="color: #5B6268;">))))</span>
+  (looper<span style="color: #5B6268;">))</span>
+</pre>
+</div>
+
+<p>
+And this is exactly what we expect it to be! We can use this <code>expand-once</code> to inspect our
+macro-expansions and debug them.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org2502411" class="outline-2">
+<h2 id="org2502411">How does this work?</h2>
+<div class="outline-text-2" id="text-org2502411">
+<p>
+In most programming languages, there's this dichotomy of code and data. In Lisp languages, this
+dichotomy doesn't exist. Consider the following code:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-racket">(<span style="color: #c678dd;">println</span> (<span style="color: #51afef;">let</span> ([<span style="color: #dcaeea;">x</span> <span style="color: #2e8b57;">10</span>] [<span style="color: #dcaeea;">y</span> <span style="color: #2e8b57;">20</span><span style="color: #5B6268;">])</span>
+      (<span style="color: #c678dd;">*</span> x y<span style="color: #5B6268;">)))</span>
+</pre>
+</div>
+
+<p>
+This code will calculate the product of <code>x</code> and <code>y</code>, and then print it. It's pretty straighforards. But
+how about if we make a small modification to it:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-racket">(<span style="color: #c678dd;">println</span> '(<span style="color: #51afef;">let</span> ([<span style="color: #dcaeea;">x</span> <span style="color: #2e8b57;">10</span>] [<span style="color: #dcaeea;">y</span> <span style="color: #2e8b57;">20</span><span style="color: #5B6268;">])</span>
+       (<span style="color: #c678dd;">*</span> x y<span style="color: #5B6268;">)))</span>
+</pre>
+</div>
+
+<p>
+All we've done is added a single <code>'</code> in front of the <code>let</code>, and the meaning of this code has completely
+changed. Instead of the argument to <code>println</code> being an expression that calculates and returns a
+result, the argument is now a linked list with 3 elements: <code>let</code>, <code>([x 10] [y 20])</code> and <code>(* x
+y)</code>. Completely different meaning now. 
+</p>
+</div>
+</div>
+
+<div id="outline-container-org363131e" class="outline-2">
+<h2 id="org363131e">A quick detour to Common Lisp</h2>
+<div class="outline-text-2" id="text-org363131e">
+<p>
+When we define functions, the parameters to those functions are evaluated before being passed in,
+whereas in macros they're not. The arguments to our macros are the code itself. This is a little
+easier to see in Common Lisp than in Racket. We'll define a simple Common Lisp macro here:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-lisp">&gt; (<span style="color: #51afef;">defmacro</span> <span style="color: #c678dd;">example</span> (x<span style="color: #5B6268;">)</span>
+    (print x<span style="color: #5B6268;">)</span>
+    x<span style="color: #5B6268;">)</span>
+
+&gt; (example (<span style="color: #51afef;">let</span> ((x 10) (y 20<span style="color: #5B6268;">))</span>
+       (* x y<span style="color: #5B6268;">)))</span>
+(<span style="color: #51afef;">LET</span> ((X 10) (Y 20)) 
+  (* X Y<span style="color: #5B6268;">))</span>
+200
+</pre>
+</div>
+
+<p>
+When we run this, the macro will print out it's argument, which isn't what our <code>let</code> evaluates too,
+but rather the <code>let</code> itself. So the arguments to our macros is the <i>code</i> we pass to it, which it's able
+to manipulate as linked lists using the same old <code>car</code>, <code>cdr</code> and <code>cons</code> that we use all the time.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org3280913" class="outline-2">
+<h2 id="org3280913">What's wrong with functions?</h2>
+<div class="outline-text-2" id="text-org3280913">
+<p>
+So this macro crap just expanded to a bunch of functions, why use them? What's wrong with functions?
+Nothing is wrong with functions. They just serve adifferent purpose. Let's try implementing our
+<code>while</code> loop using a function, and we'll see how different this is now:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-racket">(<span style="color: #51afef;">define</span> [<span style="color: #c678dd;">while-loop</span> condition body<span style="color: #5B6268;">]</span>
+  (<span style="color: #51afef;">when</span> (condition<span style="color: #5B6268;">)</span>
+    (body<span style="color: #5B6268;">)</span>
+    (while-loop condition body<span style="color: #5B6268;">)))</span>
+</pre>
+</div>
+
+<p>
+This looks like it'll work fine, but what about when we want to try actually using this?
+</p>
+
+<div class="org-src-container">
+<pre class="src src-racket">(<span style="color: #51afef;">define</span> <span style="color: #dcaeea;">x</span> <span style="color: #2e8b57;">10</span><span style="color: #5B6268;">)</span>
+(while-loop (<span style="color: #51afef;">lambda</span> () (<span style="color: #c678dd;">&gt;</span> x <span style="color: #2e8b57;">0</span><span style="color: #5B6268;">))</span>
+  (<span style="color: #51afef;">lambda</span> () 
+    (<span style="color: #c678dd;">println</span> x<span style="color: #5B6268;">)</span>
+    (<span style="color: #51afef;">set!</span> x (<span style="color: #c678dd;">-</span> x <span style="color: #2e8b57;">1</span><span style="color: #5B6268;">))))</span>
+</pre>
+</div>
+
+<p>
+Now everything is just wrapped in <code>lambda</code>, which, while it works, is pretty ugly and much more 
+verbose than before.
+</p>
+
+<p>
+So we can use macros as just another abstraction tool to simplify and clean up our code in the same
+way that we could do by writing functions or creating new classes.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org7e11fd9" class="outline-2">
+<h2 id="org7e11fd9">Threading macros</h2>
+<div class="outline-text-2" id="text-org7e11fd9">
+<p>
+If you're still not convinced, here's a macro that would allow us to pipe our data between function
+calls so that we don't need to have deep nested calls:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-racket">(<span style="color: #51afef;">define-syntax</span> <span style="color: #dcaeea;">-&gt;&gt;</span>
+  (<span style="color: #51afef;">syntax-rules</span> (<span style="color: #5B6268;">)</span>
+    [(<span style="color: #51afef;">_</span> x) x<span style="color: #5B6268;">]</span>
+    [(<span style="color: #51afef;">_</span> x (f <span style="color: #51afef;">...</span>)) (f <span style="color: #51afef;">...</span> x<span style="color: #5B6268;">)]</span>
+    [(<span style="color: #51afef;">_</span> x y) (y x<span style="color: #5B6268;">)]</span>
+    [(<span style="color: #51afef;">_</span> x y z <span style="color: #51afef;">...</span>) (-&gt;&gt; (-&gt;&gt; x y) z <span style="color: #51afef;">...</span><span style="color: #5B6268;">)]))</span>
+</pre>
+</div>
+
+<p>
+Now if we wanted to run a list through a sequence of operations, we pipe them instead of nesting.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-racket">(<span style="color: #c678dd;">foldr</span> (<span style="color: #51afef;">lambda</span> (a x) (<span style="color: #c678dd;">+</span> a x)) 
+       <span style="color: #2e8b57;">0</span> 
+       (<span style="color: #c678dd;">map</span> (<span style="color: #51afef;">lambda</span> (x) (<span style="color: #c678dd;">*</span> x <span style="color: #2e8b57;">2</span>)) 
+      (<span style="color: #c678dd;">filter</span> (<span style="color: #51afef;">lambda</span> (x) (<span style="color: #c678dd;">even?</span> x<span style="color: #5B6268;">))</span>
+        (<span style="color: #c678dd;">list</span> <span style="color: #2e8b57;">1</span> <span style="color: #2e8b57;">2</span> <span style="color: #2e8b57;">3</span> <span style="color: #2e8b57;">4</span> <span style="color: #2e8b57;">5</span><span style="color: #5B6268;">)))))</span>
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-racket">(-&gt;&gt; (<span style="color: #c678dd;">list</span> <span style="color: #2e8b57;">1</span> <span style="color: #2e8b57;">2</span> <span style="color: #2e8b57;">3</span> <span style="color: #2e8b57;">4</span> <span style="color: #2e8b57;">5</span><span style="color: #5B6268;">)</span>
+     (<span style="color: #c678dd;">filter</span> (<span style="color: #51afef;">lambda</span> (x) (<span style="color: #c678dd;">even?</span> x<span style="color: #5B6268;">)))</span>
+     (<span style="color: #c678dd;">map</span> (<span style="color: #51afef;">lambda</span> (x) (<span style="color: #c678dd;">*</span> x <span style="color: #2e8b57;">2</span><span style="color: #5B6268;">)))</span>
+     (<span style="color: #c678dd;">foldr</span> (<span style="color: #51afef;">lambda</span> (a x) (<span style="color: #c678dd;">+</span> a x)) <span style="color: #2e8b57;">0</span><span style="color: #5B6268;">))</span>
+</pre>
+</div>
+
+<p>
+Which is much clearer about what we're doing here than simply having a bunch of nested function
+calls. We could also easily construct the <code>-&gt;</code> variation of the threading macro that defaults to
+inserting the argument as the first parameter.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org935a48e" class="outline-2">
+<h2 id="org935a48e">Lisp as Lambdas</h2>
+<div class="outline-text-2" id="text-org935a48e">
+<p>
+A whole lot of what we do in Lisp can be boiled down to macros around lambdas. Our <code>while</code> loop is one
+example, but even <code>let</code> can be thought of as syntactic sugar over a lambda call:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-racket">(<span style="color: #51afef;">let</span> ((<span style="color: #dcaeea;">x</span> <span style="color: #2e8b57;">10</span>) (<span style="color: #dcaeea;">y</span> <span style="color: #2e8b57;">20</span><span style="color: #5B6268;">))</span>
+  (<span style="color: #c678dd;">*</span> x y<span style="color: #5B6268;">))</span>
+</pre>
+</div>
+
+<p>
+Is functionally identical to the following:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-racket">((<span style="color: #51afef;">lambda</span> (x y) 
+   (<span style="color: #c678dd;">*</span> x y<span style="color: #5B6268;">))</span>
+ <span style="color: #2e8b57;">10</span> <span style="color: #2e8b57;">20</span><span style="color: #5B6268;">)</span>
+</pre>
+</div>
+
+<p>
+But we use <code>let</code> because it's much cleaner. Here's how <code>let</code> could be defined though:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-racket">(<span style="color: #51afef;">define-syntax</span> <span style="color: #dcaeea;">mlet</span>
+  (<span style="color: #51afef;">syntax-rules</span> (<span style="color: #5B6268;">)</span>
+    [(<span style="color: #51afef;">_</span> ((id value) <span style="color: #51afef;">...</span>) body <span style="color: #51afef;">...</span><span style="color: #5B6268;">)</span>
+     ((<span style="color: #51afef;">lambda</span> (id <span style="color: #51afef;">...</span>) body <span style="color: #51afef;">...</span><span style="color: #5B6268;">)</span>
+      value <span style="color: #51afef;">...</span><span style="color: #5B6268;">)]))</span>
+</pre>
+</div>
+
+<p>
+As you can see, <code>let</code> is just a simple macro around an immediately invoked lambda. 
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgb8720a7" class="outline-2">
+<h2 id="orgb8720a7">Named <code>let</code></h2>
+<div class="outline-text-2" id="text-orgb8720a7">
+<p>
+Another useful form for <code>let</code> is the <i>named</i> <code>let</code>, which allows us to call our <code>let</code> block recursively. 
+Again, we can define this almost entirely in terms of lambdas.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-racket">(<span style="color: #51afef;">define-syntax</span> <span style="color: #dcaeea;">rec</span>
+  (<span style="color: #51afef;">syntax-rules</span> (<span style="color: #5B6268;">)</span>
+    [(<span style="color: #51afef;">_</span> (name . args) body <span style="color: #51afef;">...</span><span style="color: #5B6268;">)</span>
+     (rec name (<span style="color: #51afef;">lambda</span> args body <span style="color: #51afef;">...</span><span style="color: #5B6268;">))]</span>
+    [(<span style="color: #51afef;">_</span> name value<span style="color: #5B6268;">)</span>
+     (<span style="color: #51afef;">let</span> (<span style="color: #5B6268;">)</span>
+       (<span style="color: #51afef;">define</span> <span style="color: #dcaeea;">name</span> value<span style="color: #5B6268;">)</span>
+       name<span style="color: #5B6268;">)]))</span>
+
+(<span style="color: #51afef;">define-syntax</span> <span style="color: #dcaeea;">nlet</span>
+  (<span style="color: #51afef;">syntax-rules</span> (<span style="color: #5B6268;">)</span>
+    [(<span style="color: #51afef;">_</span> <span style="color: #c678dd;">tag</span> ((id value) <span style="color: #51afef;">...</span>) body <span style="color: #51afef;">...</span><span style="color: #5B6268;">)</span>
+     ((rec (<span style="color: #c678dd;">tag</span> id <span style="color: #51afef;">...</span>) 
+  body <span style="color: #51afef;">...</span>) 
+      value <span style="color: #51afef;">...</span><span style="color: #5B6268;">)]))</span>
+</pre>
+</div>
+
+<p>
+Of course we have a <code>let</code> in the <code>rec</code> macro, but that's alright because we've already defined our <code>let</code>
+macro. We also have a single <code>define</code>, which is also alright because <code>define</code> is a core primitive, we
+need it to be able to define recursion unless we want to dig into the lambda calculus y-combinator.
+</p>
+
+<p>
+We can now use our <code>nlet</code> like below, and it will return the sum of all the elements in the list.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-racket">(nlet sum ([lst (<span style="color: #c678dd;">list</span> <span style="color: #2e8b57;">1</span> <span style="color: #2e8b57;">2</span> <span style="color: #2e8b57;">3</span> <span style="color: #2e8b57;">4</span> <span style="color: #2e8b57;">5</span> <span style="color: #2e8b57;">6</span> <span style="color: #2e8b57;">7</span> <span style="color: #2e8b57;">8</span> <span style="color: #2e8b57;">9</span> <span style="color: #2e8b57;">10</span><span style="color: #5B6268;">)])</span>
+  (<span style="color: #51afef;">if</span> (<span style="color: #c678dd;">empty?</span> lst) <span style="color: #2e8b57;">0</span> 
+      (<span style="color: #c678dd;">+</span> (<span style="color: #c678dd;">car</span> lst) (sum (<span style="color: #c678dd;">cdr</span> lst<span style="color: #5B6268;">)))))</span>
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orge6bde3f" class="outline-2">
+<h2 id="orge6bde3f">Macros in unexpected places</h2>
+<div class="outline-text-2" id="text-orge6bde3f">
+<p>
+Macros are so prevalent, that not only can our control flow contructs be built using them, but even
+much more unsuspecting things. Consider the following function:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-racket">(<span style="color: #c678dd;">define/match</span> [<span style="color: #c678dd;">or</span> . args<span style="color: #5B6268;">]</span>
+  [((<span style="color: #c678dd;">list</span>)) <span style="color: #2e8b57;">#true</span><span style="color: #5B6268;">]</span>
+  [((<span style="color: #c678dd;">list</span> x)) x<span style="color: #5B6268;">]</span>
+  [((<span style="color: #c678dd;">cons</span> x xs)) (<span style="color: #51afef;">if</span> x x (<span style="color: #51afef;">apply</span> <span style="color: #51afef;">or</span> xs<span style="color: #5B6268;">))])</span>
+</pre>
+</div>
+
+<p>
+This looks like a pretty reasonable definition for a logical <code>or</code>. Say we call it as
+</p>
+
+<div class="org-src-container">
+<pre class="src src-racket">(<span style="color: #51afef;">or</span> <span style="color: #2e8b57;">#false</span> <span style="color: #2e8b57;">#false</span> <span style="color: #2e8b57;">10</span> <span style="color: #2e8b57;">#false</span><span style="color: #5B6268;">)</span>
+</pre>
+</div>
+
+<p>
+Then it'll return <code>10</code> as expected, because <code>or</code> in Lisp doesn't return a boolean but rather the first
+non-false element. So this is exactly what we expect. But what about if we do this:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-racket">(<span style="color: #51afef;">or</span> <span style="color: #2e8b57;">#t</span> (some-long-function-to-compute<span style="color: #5B6268;">))</span>
+</pre>
+</div>
+
+<p>
+Then we're gonna run into an issue, because the long function is going to be execute so that it's
+output can be passed to <code>or</code>, which means even though this <code>or</code> is always going to be true, we have to
+wait anyways for this function. 
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgc439b6f" class="outline-2">
+<h2 id="orgc439b6f">Boolean operators as macros</h2>
+<div class="outline-text-2" id="text-orgc439b6f">
+<p>
+We can instead redefine our <code>and</code> and <code>or</code> constructs to be macros instead so that we evaluate one at a
+time and don't compute values needlessly - that way as soon as one value is true, we can say our <code>or</code>
+is true:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-racket">(<span style="color: #51afef;">define-syntax</span> <span style="color: #dcaeea;">or</span>
+  (<span style="color: #51afef;">syntax-rules</span> (<span style="color: #5B6268;">)</span>
+    [(<span style="color: #51afef;">_</span>) <span style="color: #2e8b57;">#true</span><span style="color: #5B6268;">]</span>
+    [(<span style="color: #51afef;">_</span> x) x<span style="color: #5B6268;">]</span>
+    [(<span style="color: #51afef;">_</span> x xs <span style="color: #51afef;">...</span><span style="color: #5B6268;">)</span>
+     (<span style="color: #51afef;">if</span> x x (<span style="color: #51afef;">or</span> xs <span style="color: #51afef;">...</span><span style="color: #5B6268;">))]))</span>
+</pre>
+</div>
+
+<p>
+This way, instead of computing every argument, we have a series of if-expressions, which will only
+evaluate branches that it needs to go into.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org99e4394" class="outline-2">
+<h2 id="org99e4394">Language-Oriented Programming</h2>
+<div class="outline-text-2" id="text-org99e4394">
+<p>
+So macros can be used for a lot. We've used them to define looping constructs, logical operators,
+recursive blocks, threading macros. and we could define a whole lot more. We can build entire 
+languages out of macros, and that's something Racket does really well. Racket is a language that was
+designed to do <i>language-oriented programming</i>. 
+</p>
+</div>
+</div>
+
+<div id="outline-container-org48fbfdc" class="outline-2">
+<h2 id="org48fbfdc">Riposte</h2>
+<div class="outline-text-2" id="text-org48fbfdc">
+<p>
+Riposte is a language built on-top of Racket designed to be a scripting language for testing REST
+APIs. Here's how you'd ensure a JSON response matches a specified schema:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-racket"><span style="color: #51afef;">#lang</span> <span style="color: #dcaeea;">riposte</span>
+
+$schema := {
+  <span style="color: #98be65;">"type"</span><span style="color: #c678dd;">:</span> <span style="color: #98be65;">"object"</span>,
+  <span style="color: #98be65;">"requiredProperties"</span><span style="color: #c678dd;">:</span> [<span style="color: #98be65;">"age"</span>, <span style="color: #98be65;">"weight"</span><span style="color: #5B6268;">]</span>
+<span style="color: #5B6268;">}</span>
+
+POST $payload to api/flub satisfies schema $schema
+</pre>
+</div>
+
+<p>
+Now, this looks <i>nothing</i> like any of the code we saw above, what is this? At the top of every Racket
+file, we include the line <code>#lang racket</code>. This tells the Racket compiler which <i>reader</i> to use to parse
+the following file. When we use <code>#lang racket</code>, it uses the default Racket reader. But if we change
+that to <code>#lang riposte</code>, then it uses a completely different reader. This allows us to not only expand
+the syntax or our language using <code>define-syntax</code> but completely break away from s-expressions using
+reader macros. Now, it's important to keep in mind that even though you're essentially providing
+your own parser here, this is <i>still</i> a macro system because your custom reader need to expand to
+plain old Racket code. 
+</p>
+</div>
+</div>
+
+<div id="outline-container-org2465132" class="outline-2">
+<h2 id="org2465132">ProfessorJ</h2>
+<div class="outline-text-2" id="text-org2465132">
+<p>
+We can use reader macros to make some pretty impressive things:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-java">#lang profj/full
+
+<span style="color: #51afef;">class</span> Example {
+  <span style="color: #51afef;">static</span> <span style="color: #ECBE7B;">String</span> <span style="color: #dcaeea;">result</span> = <span style="color: #a9a1e1;">null</span>;
+
+  <span style="color: #51afef;">public</span> <span style="color: #51afef;">static</span> <span style="color: #ECBE7B;">void</span> <span style="color: #c678dd;">Main</span>(<span style="color: #ECBE7B;">String</span>[] <span style="color: #dcaeea;">args</span>) {
+    result = <span style="color: #98be65;">"Hi"</span>;
+  }
+}
+</pre>
+</div>
+
+<p>
+This is a snippet pulled from the Racket docs for a language called ProfessorJ - it's an
+implementation of Java using Racket reader macros.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org9b5998b" class="outline-2">
+<h2 id="org9b5998b">Macros and types</h2>
+<div class="outline-text-2" id="text-org9b5998b">
+<p>
+Notice how in the Java/Racket code above we have <i>static typing</i>. Since the reader-macros are one of
+the first things to run in the compilation process and they just need to output valid Racket code,
+it means that you can have full compile-time type checking in Racket. Typed-Racket, which is a
+gradually typed <code>#lang</code> that ships with Racket, allows proper static typing with compile-time type
+errors. This means that even though your static typing comes from a library, it's still proper
+compile-time static type checks. There's even an implementation of Haskell in Racket called Hackett
+that demonstrates the flexibility of Racket's macros to implement a very sophisticated static type
+system.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org288ea7c" class="outline-2">
+<h2 id="org288ea7c">What to do with this</h2>
+<div class="outline-text-2" id="text-org288ea7c">
+<p>
+Racket provides some insanely powerful meta-programming facilities. From <code>define-syntax</code> to reader
+macros, we have <i>a lot</i> of flexibility. But what do we use it for? 
+</p>
+
+<p>
+As mentioned at the beginning of all of this, macros are just another abstraction tool, just like
+objects or functions. Sometimes an idea that you're trying to express can't really be done cleanly
+in the language that you're using. In those cases, we can build macros to wrap around the idea that
+you're trying to express. 
+</p>
+
+<p>
+For example, SQL is a declarative programming language and it's a very clean way of representing
+queries across data. We can of course try to represent SQL queries by chaining functions, and that
+tends to be the way that we do it, but it's never as nice as just SQL. For example, in C# when
+writing database queries you can lean on LINQ to write queries using SQL-like syntax. In Racket, we
+can of course do that using macros. While we're not going to build our own macros around SQL syntax,
+we could easily build a <code>#lang</code> reader macro that would emulate SQL syntax, or we could write one
+using <code>define-syntax</code>. Something that looks like this:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-racket">(sql <span style="color: #cd5c5c;">#:select</span> <span style="color: #c678dd;">*</span>
+     <span style="color: #cd5c5c;">#:from</span> table-name as tn
+     <span style="color: #cd5c5c;">#:where</span> tn.a is <span style="color: #c678dd;">not</span> <span style="color: #c678dd;">null</span><span style="color: #5B6268;">)</span>
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgfca8d7f" class="outline-2">
+<h2 id="orgfca8d7f">Conclusion</h2>
+<div class="outline-text-2" id="text-orgfca8d7f">
+<p>
+Meta-programming and macros allow some very powerful transformations in Lisp, which facilitate the
+creation of new abstractions that we don't really have access to in almost any other language. While
+macros are getting more popular with languages like Rust and Nim implementing them, and even a new
+proposal for Python (<a href="https://www.python.org/dev/peps/pep-0638/?ref=hvper.com">PEP 638</a>) to implement syntactic macros, Lisp is able to use them so naturally
+because of the lack of the dichotomy between code and data, which allows macros to be extremely
+prevalent throughout Lisp programs.
+</p>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<p class="author">Author: Philip Dumaresq</p>
+<p class="date">Created: 2020-10-19 Mon 21:10</p>
+<p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
+</div>
+</body>
+</html>
